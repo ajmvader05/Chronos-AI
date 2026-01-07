@@ -186,9 +186,12 @@ def get_ai_day(day: date = Query(..., alias="date")) -> AiDaySnapshot:
         if task.due_date is not None and task.due_date.date() == day
     ]
     tasks_open = [task for task in tasks_store if task.status == "open"]
-    summary = (
-        f"You have {len(events)} events and {len(tasks_open)} open tasks on this day."
-    )
+    if not events and not tasks_open:
+        summary = "You have no events or open tasks on this day."
+    else:
+        summary = (
+            f"You have {len(events)} events and {len(tasks_open)} open tasks on this day."
+        )
     return AiDaySnapshot(
         date=day,
         events=events,
