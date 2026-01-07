@@ -1,0 +1,64 @@
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_day",
+        "description": "Fetch a full summary of events and tasks for a given date from Chronos. Uses GET /ai/day with Authorization: Bearer <CHRONOS_API_TOKEN>.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Date to fetch in YYYY-MM-DD format.",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "required": ["date"],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_events",
+        "description": "List events in a date range from Chronos. Uses GET /events with Authorization: Bearer <CHRONOS_API_TOKEN>.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "start_date": {
+              "type": "string",
+              "description": "Filter events starting on or after this date in YYYY-MM-DD format.",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "end_date": {
+              "type": "string",
+              "description": "Filter events ending on or before this date in YYYY-MM-DD format.",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_tasks",
+        "description": "List tasks from Chronos. Uses GET /tasks with Authorization: Bearer <CHRONOS_API_TOKEN>.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "description": "Optional task status filter.",
+              "enum": ["open", "completed"]
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}
