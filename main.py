@@ -4,10 +4,42 @@ from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 # All datetimes are naive and represent local time. All-day events are interpreted as
 # [date 00:00, next day 00:00).
 app = FastAPI()
+Base = declarative_base()
+
+# SQLAlchemy is chosen for persistence to keep the ORM layer minimal and explicit.
+engine = create_engine("sqlite:///chronos.db")
+SessionLocal = sessionmaker(bind=engine)
+
+
+class EventRecord(Base):
+    __tablename__ = "events"
+
+    id = Column(String(36), primary_key=True)
+    title = Column(String, nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    all_day = Column(Boolean, nullable=False)
+    calendar = Column(String, nullable=False)
+    location = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+
+
+class TaskRecord(Base):
+    __tablename__ = "tasks"
+
+    id = Column(String(36), primary_key=True)
+    title = Column(String, nullable=False)
+    due_date = Column(DateTime, nullable=True)
+    status = Column(String, nullable=False)
+    priority = Column(Integer, nullable=True)
+    linked_event_id = Column(String(36), nullable=True)
+    notes = Column(String, nullable=True)
 
 
 class Event(BaseModel):
@@ -69,6 +101,81 @@ events_store: List[Event] = []
 tasks_store: List[Task] = []
 
 
+def _init_db() -> None:
+    Base.metadata.create_all(bind=engine)
+
+
+def _load_persisted_data() -> None:
+    # Load persisted data into in-memory stores on startup.
+    with SessionLocal() as session:
+        events_store.extend(_event_from_record(record) for record in session.query(EventRecord).all())
+        tasks_store.extend(_task_from_record(record) for record in session.query(TaskRecord).all())
+
+
+def _event_from_record(record: EventRecord) -> Event:
+    return Event(
+        id=UUID(record.id),
+        title=record.title,
+        start_time=record.start_time,
+        end_time=record.end_time,
+        all_day=record.all_day,
+        calendar=record.calendar,
+        location=record.location,
+        notes=record.notes,
+    )
+
+
+def _task_from_record(record: TaskRecord) -> Task:
+    return Task(
+        id=UUID(record.id),
+        title=record.title,
+        due_date=record.due_date,
+        status=record.status,
+        priority=record.priority,
+        linked_event_id=UUID(record.linked_event_id) if record.linked_event_id else None,
+        notes=record.notes,
+    )
+
+
+def _persist_event(event: Event) -> None:
+    # Write-through persistence for events; failures are surfaced to the caller.
+    with SessionLocal() as session:
+        record = EventRecord(
+            id=str(event.id),
+            title=event.title,
+            start_time=event.start_time,
+            end_time=event.end_time,
+            all_day=event.all_day,
+            calendar=event.calendar,
+            location=event.location,
+            notes=event.notes,
+        )
+        session.add(record)
+        session.commit()
+
+
+def _persist_task(task: Task) -> None:
+    # Write-through persistence for tasks; failures are surfaced to the caller.
+    with SessionLocal() as session:
+        record = TaskRecord(
+            id=str(task.id),
+            title=task.title,
+            due_date=task.due_date,
+            status=task.status,
+            priority=task.priority,
+            linked_event_id=str(task.linked_event_id) if task.linked_event_id else None,
+            notes=task.notes,
+        )
+        session.add(record)
+        session.commit()
+
+
+@app.on_event("startup")
+def startup() -> None:
+    _init_db()
+    _load_persisted_data()
+
+
 def _date_range_bounds(start: date, end: date) -> tuple[datetime, datetime]:
     start_dt = datetime.combine(start, time.min)
     end_dt = datetime.combine(end + timedelta(days=1), time.min)
@@ -103,6 +210,10 @@ def create_event(event: EventCreate) -> Event:
             status_code=400, detail="end_time must be after start_time"
         )
     new_event = Event(id=uuid4(), **event.dict())
+    try:
+        _persist_event(new_event)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist event") from exc
     events_store.append(new_event)
     return new_event
 
@@ -127,6 +238,10 @@ def get_events(
 @app.post("/tasks", response_model=Task)
 def create_task(task: TaskCreate) -> Task:
     new_task = Task(id=uuid4(), **task.dict())
+    try:
+        _persist_task(new_task)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist task") from exc
     tasks_store.append(new_task)
     return new_task
 
