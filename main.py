@@ -5,7 +5,8 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
-# All datetimes are naive and represent local time.
+# All datetimes are naive and represent local time. All-day events are interpreted as
+# [date 00:00, next day 00:00).
 app = FastAPI()
 
 
@@ -68,7 +69,7 @@ def _date_range_bounds(start: date, end: date) -> tuple[datetime, datetime]:
 
 def _overlaps(event: Event, range_start: datetime, range_end: datetime) -> bool:
     if event.all_day:
-        # All-day events span 00:00 to 23:59:59 of the start date; ignore time components for overlap.
+        # All-day events span [start date 00:00, next day 00:00); ignore time components for overlap.
         start_dt = datetime.combine(event.start_time.date(), time.min)
         end_dt = start_dt + timedelta(days=1)
     else:
