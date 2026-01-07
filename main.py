@@ -1,8 +1,10 @@
+import os
 from datetime import date, datetime, time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -106,6 +108,41 @@ tasks_store: List[Task] = []
 
 def _init_db() -> None:
     Base.metadata.create_all(bind=engine)
+
+
+def require_token(authorization: Optional[str] = Header(None)) -> None:
+    token = os.getenv("CHRONOS_API_TOKEN")
+    if not token:
+        raise HTTPException(
+            status_code=500,
+            detail="CHRONOS_API_TOKEN is not set",
+        )
+    if authorization != f"Bearer {token}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def custom_openapi() -> dict:
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema.setdefault("components", {}).setdefault(
+        "securitySchemes", {}
+    )["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Token",
+    }
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 def _load_persisted_data() -> None:
@@ -215,7 +252,7 @@ def _event_sort_key(event: Event) -> tuple[int, datetime]:
     return (0 if event.all_day else 1, _event_effective_start(event))
 
 
-@app.post("/events", response_model=Event)
+@app.post("/events", response_model=Event, dependencies=[Depends(require_token)])
 def create_event(event: EventCreate) -> Event:
     if event.end_time <= event.start_time:
         raise HTTPException(
@@ -230,7 +267,7 @@ def create_event(event: EventCreate) -> Event:
     return new_event
 
 
-@app.get("/events", response_model=List[Event])
+@app.get("/events", response_model=List[Event], dependencies=[Depends(require_token)])
 def get_events(
     start: date = Query(...),
     end: date = Query(...),
@@ -247,7 +284,7 @@ def get_events(
     return results
 
 
-@app.post("/tasks", response_model=Task)
+@app.post("/tasks", response_model=Task, dependencies=[Depends(require_token)])
 def create_task(task: TaskCreate) -> Task:
     new_task = Task(id=uuid4(), **task.dict())
     try:
@@ -258,7 +295,7 @@ def create_task(task: TaskCreate) -> Task:
     return new_task
 
 
-@app.get("/tasks", response_model=List[Task])
+@app.get("/tasks", response_model=List[Task], dependencies=[Depends(require_token)])
 def get_tasks(
     status: Optional[Literal["open", "done"]] = Query(None),
     due_before: Optional[date] = Query(None),
@@ -275,7 +312,7 @@ def get_tasks(
     return results
 
 
-@app.get("/snapshot", response_model=Snapshot)
+@app.get("/snapshot", response_model=Snapshot, dependencies=[Depends(require_token)])
 def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
     range_start, range_end = _date_range_bounds(snapshot_date, snapshot_date)
     events = [
@@ -298,7 +335,7 @@ def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
 
 
 # This endpoint exists to provide a reasoning-friendly snapshot for AI planners.
-@app.get("/ai/day", response_model=AiDaySnapshot)
+@app.get("/ai/day", response_model=AiDaySnapshot, dependencies=[Depends(require_token)])
 def get_ai_day(day: date = Query(..., alias="date")) -> AiDaySnapshot:
     range_start, range_end = _date_range_bounds(day, day)
     events = [
