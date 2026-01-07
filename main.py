@@ -38,6 +38,14 @@ class Snapshot(BaseModel):
     tasks_open: List[Task]
 
 
+class AiDaySnapshot(BaseModel):
+    date: date
+    events: List[Event]
+    tasks_due: List[Task]
+    tasks_open: List[Task]
+    summary: str
+
+
 class EventCreate(BaseModel):
     title: str
     start_time: datetime
@@ -76,6 +84,16 @@ def _overlaps(event: Event, range_start: datetime, range_end: datetime) -> bool:
         start_dt = event.start_time
         end_dt = event.end_time
     return start_dt < range_end and end_dt > range_start
+
+
+def _event_effective_start(event: Event) -> datetime:
+    if event.all_day:
+        return datetime.combine(event.start_time.date(), time.min)
+    return event.start_time
+
+
+def _event_sort_key(event: Event) -> tuple[int, datetime]:
+    return (0 if event.all_day else 1, _event_effective_start(event))
 
 
 @app.post("/events", response_model=Event)
@@ -149,4 +167,32 @@ def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
         events=events,
         tasks_due=tasks_due,
         tasks_open=tasks_open,
+    )
+
+
+# This endpoint exists to provide a reasoning-friendly snapshot for AI planners.
+@app.get("/ai/day", response_model=AiDaySnapshot)
+def get_ai_day(day: date = Query(..., alias="date")) -> AiDaySnapshot:
+    range_start, range_end = _date_range_bounds(day, day)
+    events = [
+        event
+        for event in events_store
+        if _overlaps(event, range_start, range_end)
+    ]
+    events.sort(key=_event_sort_key)
+    tasks_due = [
+        task
+        for task in tasks_store
+        if task.due_date is not None and task.due_date.date() == day
+    ]
+    tasks_open = [task for task in tasks_store if task.status == "open"]
+    summary = (
+        f"You have {len(events)} events and {len(tasks_open)} open tasks on this day."
+    )
+    return AiDaySnapshot(
+        date=day,
+        events=events,
+        tasks_due=tasks_due,
+        tasks_open=tasks_open,
+        summary=summary,
     )
