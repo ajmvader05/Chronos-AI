@@ -1,10 +1,11 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
+# All datetimes are naive and represent local time.
 app = FastAPI()
 
 
@@ -61,16 +62,27 @@ tasks_store: List[Task] = []
 
 def _date_range_bounds(start: date, end: date) -> tuple[datetime, datetime]:
     start_dt = datetime.combine(start, time.min)
-    end_dt = datetime.combine(end, time.max)
+    end_dt = datetime.combine(end + timedelta(days=1), time.min)
     return start_dt, end_dt
 
 
 def _overlaps(event: Event, range_start: datetime, range_end: datetime) -> bool:
-    return event.start_time <= range_end and event.end_time >= range_start
+    if event.all_day:
+        # All-day events span 00:00 to 23:59:59 of the start date; ignore time components for overlap.
+        start_dt = datetime.combine(event.start_time.date(), time.min)
+        end_dt = start_dt + timedelta(days=1)
+    else:
+        start_dt = event.start_time
+        end_dt = event.end_time
+    return start_dt < range_end and end_dt > range_start
 
 
 @app.post("/events", response_model=Event)
 def create_event(event: EventCreate) -> Event:
+    if event.end_time <= event.start_time:
+        raise HTTPException(
+            status_code=400, detail="end_time must be after start_time"
+        )
     new_event = Event(id=uuid4(), **event.dict())
     events_store.append(new_event)
     return new_event
