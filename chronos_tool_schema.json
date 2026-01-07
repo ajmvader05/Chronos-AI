@@ -29,12 +29,12 @@
           "properties": {
             "start_date": {
               "type": "string",
-              "description": "Filter events starting on or after this date in YYYY-MM-DD format.",
+              "description": "Filter events using this date as a lower bound in YYYY-MM-DD format.",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             },
             "end_date": {
               "type": "string",
-              "description": "Filter events ending on or before this date in YYYY-MM-DD format.",
+              "description": "Filter events using this date as an upper bound in YYYY-MM-DD format.",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
