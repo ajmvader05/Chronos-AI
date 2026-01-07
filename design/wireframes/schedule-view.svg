@@ -1,0 +1,63 @@
+<svg width="1400" height="900" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="900" fill="#ffffff" stroke="#111111" stroke-width="2" />
+  <text x="40" y="45" font-family="Arial" font-size="24" fill="#111111">Schedule View (Composite)</text>
+
+  <rect x="40" y="70" width="1320" height="50" fill="#f2f2f2" stroke="#111111" />
+  <text x="60" y="102" font-family="Arial" font-size="16">Schedule</text>
+  <text x="200" y="102" font-family="Arial" font-size="16">Today</text>
+  <text x="300" y="102" font-family="Arial" font-size="16">Search</text>
+  <text x="1180" y="102" font-family="Arial" font-size="16">Day | Week</text>
+
+  <rect x="40" y="140" width="220" height="720" fill="#fafafa" stroke="#111111" />
+  <text x="55" y="170" font-family="Arial" font-size="14">Filters</text>
+  <rect x="55" y="185" width="190" height="120" fill="#ffffff" stroke="#111111" />
+  <text x="60" y="205" font-family="Arial" font-size="12">Calendars</text>
+  <text x="60" y="225" font-family="Arial" font-size="12">Lists</text>
+  <text x="60" y="245" font-family="Arial" font-size="12">Tags</text>
+
+  <text x="55" y="330" font-family="Arial" font-size="14">Quick Add</text>
+  <rect x="55" y="345" width="190" height="70" fill="#ffffff" stroke="#111111" />
+  <text x="65" y="385" font-family="Arial" font-size="12">+ Task / Event</text>
+
+  <rect x="280" y="140" width="760" height="720" fill="#ffffff" stroke="#111111" />
+  <text x="300" y="170" font-family="Arial" font-size="16">Week</text>
+  <line x1="280" y1="200" x2="1040" y2="200" stroke="#111111" />
+  <text x="300" y="190" font-family="Arial" font-size="12">Mon</text>
+  <text x="400" y="190" font-family="Arial" font-size="12">Tue</text>
+  <text x="500" y="190" font-family="Arial" font-size="12">Wed</text>
+  <text x="600" y="190" font-family="Arial" font-size="12">Thu</text>
+  <text x="700" y="190" font-family="Arial" font-size="12">Fri</text>
+  <text x="800" y="190" font-family="Arial" font-size="12">Sat</text>
+  <text x="900" y="190" font-family="Arial" font-size="12">Sun</text>
+
+  <line x1="280" y1="270" x2="1040" y2="270" stroke="#dddddd" />
+  <line x1="280" y1="340" x2="1040" y2="340" stroke="#dddddd" />
+  <line x1="280" y1="410" x2="1040" y2="410" stroke="#dddddd" />
+  <line x1="280" y1="480" x2="1040" y2="480" stroke="#dddddd" />
+  <line x1="280" y1="550" x2="1040" y2="550" stroke="#dddddd" />
+  <line x1="280" y1="620" x2="1040" y2="620" stroke="#dddddd" />
+  <line x1="280" y1="690" x2="1040" y2="690" stroke="#dddddd" />
+
+  <rect x="340" y="270" width="110" height="70" fill="#e8f4ff" stroke="#111111" />
+  <text x="350" y="310" font-family="Arial" font-size="12">Event A</text>
+  <rect x="640" y="410" width="110" height="100" fill="#ffe9e9" stroke="#111111" />
+  <text x="650" y="465" font-family="Arial" font-size="12">Event B</text>
+
+  <rect x="1070" y="140" width="290" height="720" fill="#ffffff" stroke="#111111" />
+  <text x="1090" y="170" font-family="Arial" font-size="16">Tasks</text>
+
+  <rect x="1090" y="200" width="250" height="50" fill="#ffffff" stroke="#111111" />
+  <circle cx="1110" cy="225" r="10" stroke="#111111" fill="none" />
+  <text x="1130" y="230" font-family="Arial" font-size="12">Buy groceries</text>
+  <text x="1260" y="230" font-family="Arial" font-size="12">5p</text>
+
+  <rect x="1090" y="260" width="250" height="50" fill="#ffffff" stroke="#111111" />
+  <circle cx="1110" cy="285" r="10" stroke="#111111" fill="none" />
+  <text x="1130" y="290" font-family="Arial" font-size="12">Review budget</text>
+  <text x="1250" y="290" font-family="Arial" font-size="12">Tomorrow</text>
+
+  <rect x="1090" y="320" width="250" height="50" fill="#fff7e6" stroke="#111111" />
+  <circle cx="1110" cy="345" r="10" stroke="#111111" fill="none" />
+  <text x="1130" y="350" font-family="Arial" font-size="12">Submit report</text>
+  <text x="1255" y="350" font-family="Arial" font-size="12">Fri 9a</text>
+</svg>
