@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
-# All datetimes are naive and represent local time. All-day events are interpreted as
-# [date 00:00, next day 00:00).
+# All datetimes are naive and represent local time; no timezone conversions are applied.
+# All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
 Base = declarative_base()
 
@@ -22,8 +22,9 @@ class EventRecord(Base):
 
     id = Column(String(36), primary_key=True)
     title = Column(String, nullable=False)
-    start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
+    # Persist naive datetimes as-is; timezone handling is intentionally disabled.
+    start_time = Column(DateTime(timezone=False), nullable=False)
+    end_time = Column(DateTime(timezone=False), nullable=False)
     all_day = Column(Boolean, nullable=False)
     calendar = Column(String, nullable=False)
     location = Column(String, nullable=True)
@@ -35,7 +36,8 @@ class TaskRecord(Base):
 
     id = Column(String(36), primary_key=True)
     title = Column(String, nullable=False)
-    due_date = Column(DateTime, nullable=True)
+    # Persist naive datetimes as-is; timezone handling is intentionally disabled.
+    due_date = Column(DateTime(timezone=False), nullable=True)
     status = Column(String, nullable=False)
     priority = Column(Integer, nullable=True)
     linked_event_id = Column(String(36), nullable=True)
@@ -97,6 +99,7 @@ class TaskCreate(BaseModel):
     notes: Optional[str] = None
 
 
+# The database is a persistence journal; in-memory state is the runtime source of truth.
 events_store: List[Event] = []
 tasks_store: List[Task] = []
 
@@ -107,9 +110,18 @@ def _init_db() -> None:
 
 def _load_persisted_data() -> None:
     # Load persisted data into in-memory stores on startup.
+    # The database is a write-through journal; domain logic never depends on DB queries.
     with SessionLocal() as session:
-        events_store.extend(_event_from_record(record) for record in session.query(EventRecord).all())
-        tasks_store.extend(_task_from_record(record) for record in session.query(TaskRecord).all())
+        events_store.clear()
+        tasks_store.clear()
+        events_store.extend(
+            _event_from_record(record)
+            for record in session.query(EventRecord).all()
+        )
+        tasks_store.extend(
+            _task_from_record(record)
+            for record in session.query(TaskRecord).all()
+        )
 
 
 def _event_from_record(record: EventRecord) -> Event:
