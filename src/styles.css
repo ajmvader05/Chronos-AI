@@ -1,0 +1,94 @@
+:root {
+  font-family: "Inter", system-ui, sans-serif;
+  color: #1b1b1b;
+  background: #f6f6f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.app-header {
+  margin-bottom: 24px;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: #555;
+}
+
+.app-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.list {
+  padding-left: 20px;
+  margin: 12px 0 0;
+}
+
+.muted {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #b00020;
+}
+
+label.label {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+textarea {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+}
+
+button {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #2d6cdf;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2558b5;
+}
+
+.preview {
+  margin-top: 16px;
+}
+
+pre {
+  white-space: pre-wrap;
+  background: #f2f2f2;
+  padding: 12px;
+  border-radius: 6px;
+}
