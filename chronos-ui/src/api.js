@@ -4,7 +4,7 @@
 const BASE_URL = "https://your-chronos-worker.example.com";
 
 // TODO: Replace with your real token once authentication is available.
-const AUTH_TOKEN = "YOUR_TOKEN_HERE";
+export const AUTH_TOKEN = "YOUR_TOKEN_HERE";
 
 const defaultHeaders = {
   "Content-Type": "application/json",
@@ -23,9 +23,9 @@ export const fetchEventsForDate = async (dateString) => {
   return response.json();
 };
 
-export const fetchTasks = async () => {
+export const fetchTasks = async (headers = defaultHeaders) => {
   const response = await fetch(`${BASE_URL}/tasks`, {
-    headers: defaultHeaders,
+    headers,
   });
 
   if (!response.ok) {

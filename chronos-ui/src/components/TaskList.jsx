@@ -1,6 +1,6 @@
 // Fetches and displays tasks from the Chronos backend.
 import { useEffect, useState } from "react";
-import { fetchTasks } from "../api.js";
+import { AUTH_TOKEN, fetchTasks } from "../api.js";
 
 const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
   const [tasks, setTasks] = useState([]);
@@ -13,7 +13,9 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
     const loadTasks = async () => {
       try {
         setLoading(true);
-        const data = await fetchTasks();
+        const data = await fetchTasks({
+          Authorization: `Bearer ${AUTH_TOKEN}`,
+        });
         const tasksList = data?.tasks ?? [];
 
         if (isMounted) {
