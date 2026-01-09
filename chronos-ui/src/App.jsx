@@ -4,8 +4,24 @@ import DaySummary from "./components/DaySummary.jsx";
 import TaskList from "./components/TaskList.jsx";
 import AskCaroline from "./components/AskCaroline.jsx";
 import FloatingAddButton from "./components/FloatingAddButton.jsx";
+import AddEventForm from "./components/AddEventForm.jsx";
+import AddTaskForm from "./components/AddTaskForm.jsx";
 
-const AddModal = () => {
+const AddModal = ({ onEventCreated, onTaskCreated }) => {
+  const [activeTab, setActiveTab] = useState("event");
+
+  const tabButtonStyle = (tab) => ({
+    flex: 1,
+    padding: "8px 12px",
+    borderRadius: "10px",
+    border: "1px solid",
+    borderColor: activeTab === tab ? "#0f172a" : "#cbd5f5",
+    backgroundColor: activeTab === tab ? "#0f172a" : "#f8fafc",
+    color: activeTab === tab ? "#ffffff" : "#0f172a",
+    fontWeight: 600,
+    cursor: "pointer",
+  });
+
   return (
     <div
       style={{
@@ -31,6 +47,21 @@ const AddModal = () => {
         <p style={{ margin: "12px 0 0", color: "#475569" }}>
           Add your new event or task here.
         </p>
+        <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
+          <button type="button" style={tabButtonStyle("event")} onClick={() => setActiveTab("event")}>
+            Event
+          </button>
+          <button type="button" style={tabButtonStyle("task")} onClick={() => setActiveTab("task")}>
+            Task
+          </button>
+        </div>
+        <div style={{ marginTop: "20px" }}>
+          {activeTab === "event" ? (
+            <AddEventForm onSuccess={onEventCreated} />
+          ) : (
+            <AddTaskForm onSuccess={onTaskCreated} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -40,6 +71,19 @@ const App = () => {
   const [events, setEvents] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [dayRefreshKey, setDayRefreshKey] = useState(0);
+  const [taskRefreshKey, setTaskRefreshKey] = useState(0);
+
+  const handleEventCreated = () => {
+    setShowModal(false);
+    setDayRefreshKey((prev) => prev + 1);
+  };
+
+  const handleTaskCreated = () => {
+    setShowModal(false);
+    setDayRefreshKey((prev) => prev + 1);
+    setTaskRefreshKey((prev) => prev + 1);
+  };
 
   return (
     <div className="app">
@@ -50,11 +94,11 @@ const App = () => {
 
       <main className="app-grid">
         <section className="panel">
-          <DaySummary onEventsLoaded={setEvents} />
+          <DaySummary key={`day-${dayRefreshKey}`} onEventsLoaded={setEvents} />
         </section>
 
         <section className="panel">
-          <TaskList onTasksLoaded={setTasks} />
+          <TaskList key={`task-${taskRefreshKey}`} onTasksLoaded={setTasks} />
         </section>
 
         <section className="panel">
@@ -62,7 +106,9 @@ const App = () => {
         </section>
       </main>
 
-      {showModal ? <AddModal /> : null}
+      {showModal ? (
+        <AddModal onEventCreated={handleEventCreated} onTaskCreated={handleTaskCreated} />
+      ) : null}
       <FloatingAddButton setShowModal={setShowModal} />
     </div>
   );
