@@ -4,6 +4,7 @@ from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
@@ -12,6 +13,14 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 # All datetimes are naive and represent local time; no timezone conversions are applied.
 # All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_origin_regex=r"https://.*\.trycloudflare\.com",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 Base = declarative_base()
 
 # SQLAlchemy is chosen for persistence to keep the ORM layer minimal and explicit.
