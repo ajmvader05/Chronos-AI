@@ -13,6 +13,8 @@ cd '$PSScriptRoot'
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 "
 
+Start-Sleep -Seconds 3
+
 # Start the Cloudflare tunnel in a new terminal window
 $cloudflaredLog = Join-Path $PSScriptRoot "cloudflared.log"
 if (Test-Path $cloudflaredLog) {
