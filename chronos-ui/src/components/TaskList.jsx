@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { fetchTasks } from "../api.js";
 
-const TaskList = ({ onTasksLoaded }) => {
+const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,7 +37,7 @@ const TaskList = ({ onTasksLoaded }) => {
     return () => {
       isMounted = false;
     };
-  }, [onTasksLoaded]);
+  }, [onTasksLoaded, taskRefreshKey]);
 
   return (
     <div>
