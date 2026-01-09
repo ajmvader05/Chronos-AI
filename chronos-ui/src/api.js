@@ -35,6 +35,40 @@ export const fetchTasks = async () => {
   return response.json();
 };
 
+export const createEvent = async (eventData) => {
+  const response = await fetch(`${BASE_URL}/events`, {
+    method: "POST",
+    headers: {
+      ...defaultHeaders,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(eventData),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create event");
+  }
+
+  return response.json();
+};
+
+export const createTask = async (taskData) => {
+  const response = await fetch(`${BASE_URL}/tasks`, {
+    method: "POST",
+    headers: {
+      ...defaultHeaders,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(taskData),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create task");
+  }
+
+  return response.json();
+};
+
 export const fetchDaySummary = async (dateString) => {
   const response = await fetch(`${BASE_URL}/ai/day?date=${dateString}`, {
     headers: defaultHeaders,
