@@ -38,7 +38,9 @@ while (-not $cloudflareUrl) {
 
 $apiPath = Join-Path $PSScriptRoot "chronos-ui\src\api.js"
 $apiContents = Get-Content $apiPath -Raw
-$updatedApiContents = $apiContents -replace 'const BASE_URL = ".*";', "const BASE_URL = `"$cloudflareUrl`";"
+$updatedApiContents = $apiContents `
+  -replace 'const BASE_URL = ".*";', "const BASE_URL = `"$cloudflareUrl`";" `
+  -replace 'const AUTH_TOKEN = ".*";', "const AUTH_TOKEN = `"$TOKEN`";"
 Set-Content -Path $apiPath -Value $updatedApiContents
 
 # Start the React UI in a new terminal window
