@@ -34,3 +34,15 @@ export const fetchTasks = async () => {
 
   return response.json();
 };
+
+export const fetchDaySummary = async (dateString) => {
+  const response = await fetch(`${BASE_URL}/ai/day?date=${dateString}`, {
+    headers: defaultHeaders,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load day summary");
+  }
+
+  return response.json();
+};
