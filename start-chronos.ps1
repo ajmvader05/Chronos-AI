@@ -1,7 +1,8 @@
 # Chronos one-click startup script (Windows PowerShell)
 
 # Set the API token for the backend
-$env:CHRONOS_API_TOKEN = "chronos-dev-token"
+$TOKEN = "chronos-dev-token"
+$env:CHRONOS_API_TOKEN = $TOKEN
 
 # Activate the Python virtual environment (assumes .venv in repo root)
 & "$PSScriptRoot\.venv\Scripts\Activate.ps1"
