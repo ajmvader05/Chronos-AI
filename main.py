@@ -93,9 +93,9 @@ class AiDaySnapshot(BaseModel):
 
 class EventCreate(BaseModel):
     title: str
-    start_time: datetime
-    end_time: datetime
-    all_day: bool
+    date: date
+    start_time: time
+    end_time: time
     calendar: str
     location: Optional[str] = None
     notes: Optional[str] = None
@@ -103,11 +103,8 @@ class EventCreate(BaseModel):
 
 class TaskCreate(BaseModel):
     title: str
-    due_date: Optional[datetime] = None
-    status: Literal["open", "done"]
-    priority: Optional[int] = None
-    linked_event_id: Optional[UUID] = None
-    notes: Optional[str] = None
+    due_date: date
+    priority: Literal["low", "medium", "high"]
 
 
 # The database is a persistence journal; in-memory state is the runtime source of truth.
@@ -263,11 +260,22 @@ def _event_sort_key(event: Event) -> tuple[int, datetime]:
 
 @app.post("/events", response_model=Event, dependencies=[Depends(require_token)])
 def create_event(event: EventCreate) -> Event:
-    if event.end_time <= event.start_time:
+    start_dt = datetime.combine(event.date, event.start_time)
+    end_dt = datetime.combine(event.date, event.end_time)
+    if end_dt <= start_dt:
         raise HTTPException(
             status_code=400, detail="end_time must be after start_time"
         )
-    new_event = Event(id=uuid4(), **event.dict())
+    new_event = Event(
+        id=uuid4(),
+        title=event.title,
+        start_time=start_dt,
+        end_time=end_dt,
+        all_day=False,
+        calendar=event.calendar,
+        location=event.location,
+        notes=event.notes,
+    )
     try:
         _persist_event(new_event)
     except Exception as exc:
@@ -295,7 +303,14 @@ def get_events(
 
 @app.post("/tasks", response_model=Task, dependencies=[Depends(require_token)])
 def create_task(task: TaskCreate) -> Task:
-    new_task = Task(id=uuid4(), **task.dict())
+    priority_map = {"low": 1, "medium": 2, "high": 3}
+    new_task = Task(
+        id=uuid4(),
+        title=task.title,
+        due_date=datetime.combine(task.due_date, time.min),
+        status="open",
+        priority=priority_map[task.priority],
+    )
     try:
         _persist_task(new_task)
     except Exception as exc:
