@@ -1,6 +1,6 @@
 // Fetches and displays events for a chosen day (defaults to tomorrow).
 import { useEffect, useState } from "react";
-import { fetchEventsForDate } from "../api.js";
+import { fetchDaySummary } from "../api.js";
 
 const getTomorrowDateString = () => {
   const tomorrow = new Date();
@@ -20,7 +20,7 @@ const DaySummary = ({ onEventsLoaded }) => {
     const loadEvents = async () => {
       try {
         setLoading(true);
-        const data = await fetchEventsForDate(dateString);
+        const data = await fetchDaySummary(dateString);
         const eventsList = data?.events ?? [];
 
         if (isMounted) {
