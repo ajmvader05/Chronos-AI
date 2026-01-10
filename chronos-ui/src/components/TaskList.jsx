@@ -1,11 +1,18 @@
 // Fetches and displays tasks from the Chronos backend.
 import { useEffect, useState } from "react";
-import { AUTH_TOKEN, fetchTasks } from "../api.js";
+import { AUTH_TOKEN, completeTask, fetchTasks } from "../api.js";
 
 const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const fetchTasksList = async () => {
+    const data = await fetchTasks({
+      Authorization: `Bearer ${AUTH_TOKEN}`,
+    });
+    return (data ?? []).filter((task) => task.status === "open");
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -13,10 +20,7 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
     const loadTasks = async () => {
       try {
         setLoading(true);
-        const data = await fetchTasks({
-          Authorization: `Bearer ${AUTH_TOKEN}`,
-        });
-        const tasksList = (data ?? []).filter((task) => task.status === "open");
+        const tasksList = await fetchTasksList();
 
         if (isMounted) {
           setTasks(tasksList);
@@ -48,6 +52,22 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
     return "unknown";
   };
 
+  const handleCompleteTask = async (taskId) => {
+    try {
+      setLoading(true);
+      setError("");
+      await completeTask(taskId);
+      const tasksList = await fetchTasksList();
+      setTasks(tasksList);
+      onTasksLoaded(tasksList);
+    } catch (err) {
+      setError("Unable to load tasks.");
+      onTasksLoaded([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <h2>Tasks</h2>
@@ -67,6 +87,11 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
                   : "N/A"}
               </div>
               <div>Priority: {getPriorityLabel(task.priority)}</div>
+              {task.status === "open" && (
+                <button type="button" onClick={() => handleCompleteTask(task.id)}>
+                  Complete
+                </button>
+              )}
             </li>
           ))}
         </ul>
