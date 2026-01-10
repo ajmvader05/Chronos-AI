@@ -69,6 +69,20 @@ export const createTask = async (taskData) => {
   return response.json();
 };
 
+export const completeTask = async (taskId) => {
+  const response = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    method: "PATCH",
+    headers: defaultHeaders,
+    body: JSON.stringify({ status: "completed" }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to complete task");
+  }
+
+  return response.json();
+};
+
 export const fetchDaySummary = async (dateString) => {
   const response = await fetch(`${BASE_URL}/ai/day?date=${dateString}`, {
     headers: defaultHeaders,
