@@ -8,9 +8,7 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
   const [error, setError] = useState("");
 
   const fetchTasksList = async () => {
-    const data = await fetchTasks({
-      Authorization: `Bearer ${AUTH_TOKEN}`,
-    });
+    const data = await fetchTasks();
     return (data ?? []).filter((task) => task.status === "open");
   };
 
