@@ -16,7 +16,7 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
         const data = await fetchTasks({
           Authorization: `Bearer ${AUTH_TOKEN}`,
         });
-        const tasksList = data?.tasks ?? [];
+        const tasksList = (data ?? []).filter((task) => task.status === "open");
 
         if (isMounted) {
           setTasks(tasksList);
@@ -41,6 +41,13 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
     };
   }, [onTasksLoaded, taskRefreshKey]);
 
+  const getPriorityLabel = (priority) => {
+    if (priority === 1) return "low";
+    if (priority === 2) return "medium";
+    if (priority === 3) return "high";
+    return "unknown";
+  };
+
   return (
     <div>
       <h2>Tasks</h2>
@@ -51,7 +58,16 @@ const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
         <ul className="list">
           {tasks.length === 0 && <li>No tasks yet.</li>}
           {tasks.map((task) => (
-            <li key={task.id ?? task.title}>{task.title}</li>
+            <li key={task.id ?? task.title}>
+              <div>{task.title}</div>
+              <div>
+                Due:{" "}
+                {task.due_date
+                  ? new Date(task.due_date).toLocaleDateString()
+                  : "N/A"}
+              </div>
+              <div>Priority: {getPriorityLabel(task.priority)}</div>
+            </li>
           ))}
         </ul>
       )}
