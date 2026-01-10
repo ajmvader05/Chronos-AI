@@ -107,6 +107,10 @@ class TaskCreate(BaseModel):
     priority: Literal["low", "medium", "high"]
 
 
+class TaskStatusUpdate(BaseModel):
+    status: Literal["completed"]
+
+
 # The database is a persistence journal; in-memory state is the runtime source of truth.
 events_store: List[Event] = []
 tasks_store: List[Task] = []
@@ -225,6 +229,19 @@ def _persist_task(task: Task) -> None:
         session.commit()
 
 
+def _update_task_status(task: Task) -> None:
+    with SessionLocal() as session:
+        record = (
+            session.query(TaskRecord)
+            .filter(TaskRecord.id == str(task.id))
+            .one_or_none()
+        )
+        if record is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        record.status = task.status
+        session.commit()
+
+
 @app.on_event("startup")
 def startup() -> None:
     _init_db()
@@ -334,6 +351,26 @@ def get_tasks(
             if task.due_date is not None and task.due_date.date() <= due_before
         ]
     return results
+
+
+@app.patch(
+    "/tasks/{task_id}",
+    response_model=Task,
+    dependencies=[Depends(require_token)],
+)
+def complete_task(task_id: UUID, update: TaskStatusUpdate) -> Task:
+    task = next((item for item in tasks_store if item.id == task_id), None)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if update.status == "completed":
+        task.status = "done"
+    try:
+        _update_task_status(task)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist task") from exc
+    return task
 
 
 @app.get("/snapshot", response_model=Snapshot, dependencies=[Depends(require_token)])
