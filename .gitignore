@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Frontend
+chronos-ui/node_modules/
+chronos-ui/dist/
+chronos-ui/package-lock.json
+
+# Local data / logs
+chronos.db
+cloudflared.log
+api key.txt
+
+# OS junk
+.DS_Store
+Thumbs.db
