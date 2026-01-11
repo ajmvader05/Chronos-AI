@@ -16,19 +16,19 @@ load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("chronos")
+CHRONOS_API_TOKEN = os.getenv("CHRONOS_API_TOKEN")
 
 # All datetimes are naive and represent local time; no timezone conversions are applied.
 # All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
-allowed_origins = ["http://localhost:5173", "http://192.168.1.31:5173"]
-allowed_origin_regex = r"^https?://.*"
-if not os.getenv("CHRONOS_API_TOKEN"):
-    allowed_origins = ["*"]
-    allowed_origin_regex = None
+origins = [
+    "http://localhost:5173",
+    "http://192.168.1.31:5173",
+    "https://chronos-ui.onrender.com",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=allowed_origin_regex,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,10 +134,12 @@ def _init_db() -> None:
 
 
 def require_token(authorization: Optional[str] = Header(None)) -> None:
-    token = os.getenv("CHRONOS_API_TOKEN")
-    if not token:
+    if not CHRONOS_API_TOKEN:
         return
-    if authorization != f"Bearer {token}":
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
+    if token != CHRONOS_API_TOKEN:
         logger.warning("Auth failed: invalid or missing token.")
         raise HTTPException(
             status_code=401,
@@ -154,7 +156,7 @@ def custom_openapi() -> dict:
         description=app.description,
         routes=app.routes,
     )
-    if not os.getenv("CHRONOS_API_TOKEN"):
+    if not CHRONOS_API_TOKEN:
         app.openapi_schema = openapi_schema
         return app.openapi_schema
     openapi_schema.setdefault("components", {}).setdefault(
