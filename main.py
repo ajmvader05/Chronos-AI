@@ -7,7 +7,7 @@ from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -18,15 +18,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from dotenv import load_dotenv
 
+from auth import get_current_user_id
+
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("chronos")
-CHRONOS_API_TOKEN = os.getenv("CHRONOS_API_TOKEN")
 
 # Persisted datetimes are naive and represent local time.
 # All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
+protected_router = APIRouter(dependencies=[Depends(get_current_user_id)])
 origins = [
     "https://chronos-ai-frontend.onrender.com",
     "http://localhost:5173",
@@ -139,20 +141,6 @@ def _init_db() -> None:
     Base.metadata.create_all(bind=engine)
 
 
-def require_token(authorization: Optional[str] = Header(None)) -> None:
-    if not CHRONOS_API_TOKEN:
-        return
-    token = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ", 1)[1]
-    if token != CHRONOS_API_TOKEN:
-        logger.warning("Auth failed: invalid or missing token.")
-        raise HTTPException(
-            status_code=401,
-            detail={"error": "Invalid or missing token"},
-        )
-
-
 def custom_openapi() -> dict:
     if app.openapi_schema:
         return app.openapi_schema
@@ -162,17 +150,18 @@ def custom_openapi() -> dict:
         description=app.description,
         routes=app.routes,
     )
-    if not CHRONOS_API_TOKEN:
-        app.openapi_schema = openapi_schema
-        return app.openapi_schema
     openapi_schema.setdefault("components", {}).setdefault(
         "securitySchemes", {}
     )["BearerAuth"] = {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "Token",
+        "bearerFormat": "JWT",
     }
-    openapi_schema["security"] = [{"BearerAuth": []}]
+    for path, methods in openapi_schema.get("paths", {}).items():
+        if path == "/health":
+            continue
+        for method in methods.values():
+            method.setdefault("security", [{"BearerAuth": []}])
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -271,10 +260,7 @@ def _update_task_status(task: Task) -> None:
 def startup() -> None:
     _init_db()
     _load_persisted_data()
-    if os.getenv("CHRONOS_API_TOKEN"):
-        logger.info("Auth enabled")
-    else:
-        logger.info("Auth disabled (dev mode)")
+    logger.info("Auth enabled")
 
 
 @app.middleware("http")
@@ -448,7 +434,7 @@ def _format_daily_prompt(
     return "\n".join(lines)
 
 
-@app.post("/events", response_model=Event, dependencies=[Depends(require_token)])
+@protected_router.post("/events", response_model=Event)
 def create_event(event: EventCreate) -> Event:
     start_dt = datetime.combine(event.date, event.start_time)
     end_dt = datetime.combine(event.date, event.end_time)
@@ -474,7 +460,7 @@ def create_event(event: EventCreate) -> Event:
     return new_event
 
 
-@app.get("/events", response_model=List[Event], dependencies=[Depends(require_token)])
+@protected_router.get("/events", response_model=List[Event])
 def get_events(
     start: date = Query(...),
     end: date = Query(...),
@@ -491,7 +477,7 @@ def get_events(
     return results
 
 
-@app.post("/tasks", response_model=Task, dependencies=[Depends(require_token)])
+@protected_router.post("/tasks", response_model=Task)
 def create_task(task: TaskCreate) -> Task:
     priority_map = {"low": 1, "medium": 2, "high": 3}
     new_task = Task(
@@ -509,7 +495,7 @@ def create_task(task: TaskCreate) -> Task:
     return new_task
 
 
-@app.get("/tasks", response_model=List[Task], dependencies=[Depends(require_token)])
+@protected_router.get("/tasks", response_model=List[Task])
 def get_tasks(
     status: Optional[Literal["open", "done"]] = Query(None),
     due_before: Optional[date] = Query(None),
@@ -526,10 +512,9 @@ def get_tasks(
     return results
 
 
-@app.patch(
+@protected_router.patch(
     "/tasks/{task_id}",
     response_model=Task,
-    dependencies=[Depends(require_token)],
 )
 def complete_task(task_id: UUID, update: TaskStatusUpdate) -> Task:
     task = next((item for item in tasks_store if item.id == task_id), None)
@@ -546,7 +531,7 @@ def complete_task(task_id: UUID, update: TaskStatusUpdate) -> Task:
     return task
 
 
-@app.get("/snapshot", response_model=Snapshot, dependencies=[Depends(require_token)])
+@protected_router.get("/snapshot", response_model=Snapshot)
 def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
     range_start, range_end = _date_range_bounds(snapshot_date, snapshot_date)
     events = [
@@ -568,10 +553,9 @@ def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
     )
 
 
-@app.api_route(
+@protected_router.api_route(
     "/daily-prompt",
     response_class=PlainTextResponse,
-    dependencies=[Depends(require_token)],
     methods=["GET", "POST"],
 )
 def get_daily_prompt(
@@ -603,3 +587,6 @@ def get_daily_prompt(
     ]
     tasks_open = [task for task in tasks_store if task.status == "open"]
     return _format_daily_prompt(day, events, tasks_open, local_dt)
+
+
+app.include_router(protected_router)
