@@ -78,7 +78,7 @@ const TaskList = ({ onTasksLoaded = noop, taskRefreshKey }) => {
     setEditingTaskId(task.id);
     setEditValues({
       title: task.title ?? "",
-      due_date: task.due_date ? task.due_date.split("T")[0] : "",
+      due_date: task.due_date ? task.due_date.slice(0, 16) : "",
       priority: task.priority ?? 2,
     });
   };
@@ -101,7 +101,9 @@ const TaskList = ({ onTasksLoaded = noop, taskRefreshKey }) => {
       setError("");
       const updates = {
         title: editValues.title,
-        due_date: editValues.due_date || null,
+        due_date: editValues.due_date
+          ? new Date(editValues.due_date).toISOString()
+          : null,
         priority: editValues.priority,
       };
       const updatedTask = await updateTask(taskId, updates);
@@ -111,21 +113,30 @@ const TaskList = ({ onTasksLoaded = noop, taskRefreshKey }) => {
       setTasks(nextTasks);
       onTasksLoaded(nextTasks);
       setEditingTaskId(null);
+      console.log("Task updated:", updatedTask);
     } catch (err) {
       setError("Unable to update task.");
+      console.error("Failed to update task.", err);
+      window.alert("Unable to update task. Please try again.");
     }
   };
 
   const handleDeleteTask = async (taskId) => {
     if (!window.confirm("Delete this task?")) return;
+    const previousTasks = tasks;
+    const nextTasks = tasks.filter((task) => task.id !== taskId);
     try {
       setError("");
-      await deleteTask(taskId);
-      const nextTasks = tasks.filter((task) => task.id !== taskId);
       setTasks(nextTasks);
       onTasksLoaded(nextTasks);
+      await deleteTask(taskId);
+      console.log("Task deleted:", taskId);
     } catch (err) {
+      setTasks(previousTasks);
+      onTasksLoaded(previousTasks);
       setError("Unable to delete task.");
+      console.error("Failed to delete task.", err);
+      window.alert("Unable to delete task. Please try again.");
     }
   };
 
@@ -154,7 +165,7 @@ const TaskList = ({ onTasksLoaded = noop, taskRefreshKey }) => {
                   <label>
                     Due date
                     <input
-                      type="date"
+                      type="datetime-local"
                       name="due_date"
                       value={editValues.due_date}
                       onChange={handleEditChange}
@@ -185,7 +196,7 @@ const TaskList = ({ onTasksLoaded = noop, taskRefreshKey }) => {
                   <div>
                     Due:{" "}
                     {task.due_date
-                      ? new Date(task.due_date).toLocaleDateString()
+                      ? new Date(task.due_date).toLocaleString()
                       : "N/A"}
                   </div>
                   <div>Priority: {getPriorityLabel(task.priority)}</div>
