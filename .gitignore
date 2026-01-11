@@ -7,6 +7,7 @@ __pycache__/
 chronos-ui/node_modules/
 chronos-ui/dist/
 chronos-ui/package-lock.json
+chronos-ui/.env
 
 # Local data / logs
 chronos.db
