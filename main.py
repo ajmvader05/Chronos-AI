@@ -124,6 +124,14 @@ class TaskStatusUpdate(BaseModel):
     status: Literal["completed"]
 
 
+class EventUpdate(BaseModel):
+    title: str
+    start_time: datetime
+    end_time: datetime
+    location: str
+    calendar: Optional[str] = None
+
+
 class DailyPromptRequest(BaseModel):
     client_time: Optional[str] = Field(None, alias="clientTime")
     timezone: Optional[str] = None
@@ -253,6 +261,25 @@ def _update_task_status(task: Task) -> None:
         if record is None:
             raise HTTPException(status_code=404, detail="Task not found")
         record.status = task.status
+        session.commit()
+
+
+def _update_event_record(event: Event) -> None:
+    with SessionLocal() as session:
+        record = (
+            session.query(EventRecord)
+            .filter(EventRecord.id == str(event.id))
+            .one_or_none()
+        )
+        if record is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        record.title = event.title
+        record.start_time = event.start_time
+        record.end_time = event.end_time
+        record.all_day = event.all_day
+        record.calendar = event.calendar
+        record.location = event.location
+        record.notes = event.notes
         session.commit()
 
 
@@ -475,6 +502,42 @@ def get_events(
     if calendar is not None:
         results = [event for event in results if event.calendar == calendar]
     return results
+
+
+@protected_router.patch("/events/{event_id}", response_model=Event)
+def update_event(event_id: UUID, payload: EventUpdate) -> Event:
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="title cannot be blank")
+    if payload.end_time <= payload.start_time:
+        raise HTTPException(
+            status_code=400, detail="end_time must be after start_time"
+        )
+    existing = next((item for item in events_store if item.id == event_id), None)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    updated_event = Event(
+        id=existing.id,
+        title=title,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
+        all_day=False,
+        calendar=payload.calendar or existing.calendar,
+        location=payload.location,
+        notes=existing.notes,
+    )
+    try:
+        _update_event_record(updated_event)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to update event.")
+        raise HTTPException(
+            status_code=500, detail="Failed to persist event"
+        ) from exc
+    index = events_store.index(existing)
+    events_store[index] = updated_event
+    return updated_event
 
 
 @protected_router.post("/tasks", response_model=Task)
