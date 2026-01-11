@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date, datetime, time, timedelta
 from typing import List, Literal, Optional
@@ -13,12 +14,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("chronos")
+
 # All datetimes are naive and represent local time; no timezone conversions are applied.
 # All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
+allowed_origins = ["http://localhost:5173", "http://192.168.1.31:5173"]
+allowed_origin_regex = r"^https?://.*"
+if not os.getenv("CHRONOS_API_TOKEN"):
+    allowed_origins = ["*"]
+    allowed_origin_regex = None
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -125,7 +135,10 @@ def _init_db() -> None:
 
 def require_token(authorization: Optional[str] = Header(None)) -> None:
     token = os.getenv("CHRONOS_API_TOKEN")
-    if not token or authorization != f"Bearer {token}":
+    if not token:
+        return
+    if authorization != f"Bearer {token}":
+        logger.warning("Auth failed: invalid or missing token.")
         raise HTTPException(
             status_code=401,
             detail={"error": "Invalid or missing token"},
@@ -141,6 +154,9 @@ def custom_openapi() -> dict:
         description=app.description,
         routes=app.routes,
     )
+    if not os.getenv("CHRONOS_API_TOKEN"):
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
     openapi_schema.setdefault("components", {}).setdefault(
         "securitySchemes", {}
     )["BearerAuth"] = {
@@ -247,6 +263,10 @@ def _update_task_status(task: Task) -> None:
 def startup() -> None:
     _init_db()
     _load_persisted_data()
+    if os.getenv("CHRONOS_API_TOKEN"):
+        logger.info("Auth enabled")
+    else:
+        logger.info("Auth disabled (dev mode)")
 
 
 @app.get("/health")
