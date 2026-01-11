@@ -32,6 +32,11 @@ const requestJson = async (url, options = {}) => {
   }
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Chronos API request failed.", {
+      status: response.status,
+      body: errorBody,
+    });
     throw new Error(`Request failed with status ${response.status}`);
   }
 
@@ -49,6 +54,11 @@ const requestText = async (url, options = {}) => {
   }
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Chronos API request failed.", {
+      status: response.status,
+      body: errorBody,
+    });
     throw new Error(`Request failed with status ${response.status}`);
   }
 
@@ -56,7 +66,7 @@ const requestText = async (url, options = {}) => {
 };
 
 export const fetchEventsForDate = (dateString) =>
-  requestJson(`${BASE_URL}/events?date=${dateString}`);
+  requestJson(`${BASE_URL}/events?start=${dateString}&end=${dateString}`);
 
 export const fetchTasks = () => requestJson(`${BASE_URL}/tasks`);
 
