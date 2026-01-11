@@ -1,7 +1,6 @@
 // Simple fetch wrappers for Chronos backend endpoints.
 
-// TODO: Replace with your deployed Render backend URL.
-const BASE_URL = "https://<PASTE_MY_RENDER_URL_HERE>";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 // TODO: Replace with your real token once authentication is available.
 export const AUTH_TOKEN = "YOUR_TOKEN_HERE";
