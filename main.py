@@ -18,8 +18,7 @@ load_dotenv()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_origin_regex=r"https://.*\.trycloudflare\.com",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -250,6 +249,11 @@ def _update_task_status(task: Task) -> None:
 def startup() -> None:
     _init_db()
     _load_persisted_data()
+
+
+@app.get("/health")
+def health_check() -> dict:
+    return {"status": "ok"}
 
 
 def _date_range_bounds(start: date, end: date) -> tuple[datetime, datetime]:
