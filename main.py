@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time as dt_time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
@@ -111,8 +111,8 @@ class AiDaySnapshot(BaseModel):
 class EventCreate(BaseModel):
     title: str
     date: date
-    start_time: time
-    end_time: time
+    start_time: dt_time
+    end_time: dt_time
     calendar: str
     location: Optional[str] = None
     notes: Optional[str] = None
