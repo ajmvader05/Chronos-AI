@@ -16,6 +16,16 @@ const formatEventTime = (event) => {
   });
 };
 
+const formatEventRange = (event) => {
+  const startTime = event.start_time ? formatEventTime(event) : "";
+  if (!event.end_time) return startTime;
+  const endTime = new Date(event.end_time).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return startTime ? `${startTime} - ${endTime}` : endTime;
+};
+
 const noop = () => {};
 
 const DaySummary = ({ onEventsLoaded = noop }) => {
@@ -27,6 +37,8 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
   const [editValues, setEditValues] = useState({
     title: "",
     start_time: "",
+    end_time: "",
+    location: "",
   });
 
   useEffect(() => {
@@ -66,6 +78,8 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
     setEditValues({
       title: event.title ?? "",
       start_time: event.start_time ? event.start_time.slice(0, 16) : "",
+      end_time: event.end_time ? event.end_time.slice(0, 16) : "",
+      location: event.location ?? "",
     });
   };
 
@@ -90,6 +104,10 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
       start_time: editValues.start_time
         ? new Date(editValues.start_time).toISOString()
         : null,
+      end_time: editValues.end_time
+        ? new Date(editValues.end_time).toISOString()
+        : null,
+      location: editValues.location || null,
     };
     const nextEvents = events.map((item) =>
       item.id === eventId ? { ...item, ...optimisticUpdates } : item
@@ -105,10 +123,13 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
       );
       setEvents(confirmedEvents);
       onEventsLoaded(confirmedEvents);
+      console.log("Event updated:", updatedEvent);
     } catch (err) {
       setEvents(previousEvents);
       onEventsLoaded(previousEvents);
       setError("Unable to update event.");
+      console.error("Failed to update event.", err);
+      window.alert("Unable to update event. Please try again.");
     }
   };
 
@@ -122,10 +143,13 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
 
     try {
       await deleteEvent(eventId);
+      console.log("Event deleted:", eventId);
     } catch (err) {
       setEvents(previousEvents);
       onEventsLoaded(previousEvents);
       setError("Unable to delete event.");
+      console.error("Failed to delete event.", err);
+      window.alert("Unable to delete event. Please try again.");
     }
   };
 
@@ -162,6 +186,23 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
                       onChange={handleEditChange}
                     />
                   </label>
+                  <label>
+                    End time
+                    <input
+                      type="datetime-local"
+                      name="end_time"
+                      value={editValues.end_time}
+                      onChange={handleEditChange}
+                    />
+                  </label>
+                  <label>
+                    Location
+                    <input
+                      name="location"
+                      value={editValues.location}
+                      onChange={handleEditChange}
+                    />
+                  </label>
                   <div>
                     <button type="submit">Save</button>
                     <button type="button" onClick={cancelEditing}>
@@ -171,7 +212,10 @@ const DaySummary = ({ onEventsLoaded = noop }) => {
                 </form>
               ) : (
                 <>
-                  <strong>{formatEventTime(event)}</strong> {event.title}
+                  <strong>{formatEventRange(event)}</strong> {event.title}
+                  {event.location && (
+                    <div className="muted">Location: {event.location}</div>
+                  )}
                   <div>
                     <button type="button" onClick={() => startEditing(event)}>
                       Edit
