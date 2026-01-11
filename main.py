@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+# Alias datetime.time to avoid shadowing the stdlib time module.
 from datetime import date, datetime, time as dt_time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
@@ -358,15 +359,15 @@ def health_check() -> dict:
 
 
 def _date_range_bounds(start: date, end: date) -> tuple[datetime, datetime]:
-    start_dt = datetime.combine(start, time.min)
-    end_dt = datetime.combine(end + timedelta(days=1), time.min)
+    start_dt = datetime.combine(start, dt_time.min)
+    end_dt = datetime.combine(end + timedelta(days=1), dt_time.min)
     return start_dt, end_dt
 
 
 def _overlaps(event: Event, range_start: datetime, range_end: datetime) -> bool:
     if event.all_day:
         # All-day events span [start date 00:00, next day 00:00); ignore time components for overlap.
-        start_dt = datetime.combine(event.start_time.date(), time.min)
+        start_dt = datetime.combine(event.start_time.date(), dt_time.min)
         end_dt = start_dt + timedelta(days=1)
     else:
         start_dt = event.start_time
@@ -376,7 +377,7 @@ def _overlaps(event: Event, range_start: datetime, range_end: datetime) -> bool:
 
 def _event_effective_start(event: Event) -> datetime:
     if event.all_day:
-        return datetime.combine(event.start_time.date(), time.min)
+        return datetime.combine(event.start_time.date(), dt_time.min)
     return event.start_time
 
 
@@ -433,7 +434,7 @@ def create_task(task: TaskCreate) -> Task:
     new_task = Task(
         id=uuid4(),
         title=task.title,
-        due_date=datetime.combine(task.due_date, time.min),
+        due_date=datetime.combine(task.due_date, dt_time.min),
         status="open",
         priority=priority_map[task.priority],
     )
