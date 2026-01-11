@@ -1,7 +1,7 @@
 // Simple fetch wrappers for Chronos backend endpoints.
 
-// TODO: Replace with your Cloudflare Worker or API base URL.
-const BASE_URL = "https://your-chronos-worker.example.com";
+// TODO: Replace with your deployed Render backend URL.
+const BASE_URL = "https://<PASTE_MY_RENDER_URL_HERE>";
 
 // TODO: Replace with your real token once authentication is available.
 export const AUTH_TOKEN = "YOUR_TOKEN_HERE";
