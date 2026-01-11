@@ -6,12 +6,12 @@ from datetime import date, datetime, time as dt_time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -119,6 +119,13 @@ class TaskCreate(BaseModel):
 
 class TaskStatusUpdate(BaseModel):
     status: Literal["completed"]
+
+
+class DailyPromptRequest(BaseModel):
+    client_time: Optional[str] = Field(None, alias="clientTime")
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 # The database is a persistence journal; in-memory state is the runtime source of truth.
@@ -375,8 +382,10 @@ def _format_date(value: date) -> str:
     return f"{value.strftime('%B')} {value.day}, {value.year}"
 
 
-def _format_daily_prompt(day: date, events: List[Event], tasks: List[Task]) -> str:
-    now = datetime.now()
+def _format_daily_prompt(
+    day: date, events: List[Event], tasks: List[Task], client_dt: datetime
+) -> str:
+    now = client_dt
     day_name = day.strftime("%A")
     formatted_date = _format_date(day)
     current_time = _format_time(now)
@@ -557,12 +566,26 @@ def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
     )
 
 
-@app.get(
+@app.api_route(
     "/daily-prompt",
     response_class=PlainTextResponse,
     dependencies=[Depends(require_token)],
+    methods=["GET", "POST"],
 )
-def get_daily_prompt(day: date = Query(..., alias="date")) -> str:
+def get_daily_prompt(
+    day: date = Query(..., alias="date"),
+    payload: Optional[DailyPromptRequest] = Body(default=None),
+) -> str:
+    if payload is None or not payload.client_time:
+        raise HTTPException(status_code=400, detail="clientTime required")
+    try:
+        client_dt = datetime.fromisoformat(
+            payload.client_time.replace("Z", "+00:00")
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail="Invalid clientTime"
+        ) from exc
     range_start, range_end = _date_range_bounds(day, day)
     events = [
         event
@@ -570,4 +593,4 @@ def get_daily_prompt(day: date = Query(..., alias="date")) -> str:
         if _overlaps(event, range_start, range_end)
     ]
     tasks_open = [task for task in tasks_store if task.status == "open"]
-    return _format_daily_prompt(day, events, tasks_open)
+    return _format_daily_prompt(day, events, tasks_open, client_dt)
