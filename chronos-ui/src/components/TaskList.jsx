@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { completeTask, fetchTasks } from "../api.js";
 
-const TaskList = ({ onTasksLoaded, taskRefreshKey }) => {
+const noop = () => {};
+
+const TaskList = ({ onTasksLoaded = noop, taskRefreshKey }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

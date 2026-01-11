@@ -68,6 +68,10 @@ textarea {
   font-family: inherit;
 }
 
+.daily-prompt textarea {
+  min-height: 220px;
+}
+
 button {
   margin-top: 12px;
   padding: 10px 16px;

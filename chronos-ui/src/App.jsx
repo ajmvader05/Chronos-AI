@@ -2,7 +2,7 @@
 import { useState } from "react";
 import DaySummary from "./components/DaySummary.jsx";
 import TaskList from "./components/TaskList.jsx";
-import AskCaroline from "./components/AskCaroline.jsx";
+import DailyPrompt from "./components/DailyPrompt.jsx";
 import FloatingAddButton from "./components/FloatingAddButton.jsx";
 import AddEventForm from "./components/AddEventForm.jsx";
 import AddTaskForm from "./components/AddTaskForm.jsx";
@@ -68,8 +68,6 @@ const AddModal = ({ onEventCreated, onTaskCreated }) => {
 };
 
 const App = () => {
-  const [events, setEvents] = useState([]);
-  const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [dayRefreshKey, setDayRefreshKey] = useState(0);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
@@ -89,20 +87,20 @@ const App = () => {
     <div className="app">
       <header className="app-header">
         <h1>Chronos UI</h1>
-        <p className="subtitle">Read-only schedule + tasks with a quick ChatGPT prompt.</p>
+        <p className="subtitle">Read-only schedule + tasks with a daily planning prompt.</p>
       </header>
 
       <main className="app-grid">
         <section className="panel">
-          <DaySummary key={`day-${dayRefreshKey}`} onEventsLoaded={setEvents} />
+          <DaySummary key={`day-${dayRefreshKey}`} />
         </section>
 
         <section className="panel">
-          <TaskList key={`task-${taskRefreshKey}`} onTasksLoaded={setTasks} />
+          <TaskList key={`task-${taskRefreshKey}`} />
         </section>
 
         <section className="panel">
-          <AskCaroline events={events} tasks={tasks} />
+          <DailyPrompt />
         </section>
       </main>
 

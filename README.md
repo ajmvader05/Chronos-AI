@@ -1,4 +1,4 @@
-# Chronos-AI
+# Chronos
 
 ## Local environment setup
 

@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Res
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -99,14 +99,6 @@ class Snapshot(BaseModel):
     events: List[Event]
     tasks_due: List[Task]
     tasks_open: List[Task]
-
-
-class AiDaySnapshot(BaseModel):
-    date: date
-    events: List[Event]
-    tasks_due: List[Task]
-    tasks_open: List[Task]
-    summary: str
 
 
 class EventCreate(BaseModel):
@@ -375,14 +367,74 @@ def _overlaps(event: Event, range_start: datetime, range_end: datetime) -> bool:
     return start_dt < range_end and end_dt > range_start
 
 
-def _event_effective_start(event: Event) -> datetime:
-    if event.all_day:
-        return datetime.combine(event.start_time.date(), dt_time.min)
-    return event.start_time
+def _format_time(value: datetime) -> str:
+    return value.strftime("%I:%M %p").lstrip("0")
 
 
-def _event_sort_key(event: Event) -> tuple[int, datetime]:
-    return (0 if event.all_day else 1, _event_effective_start(event))
+def _format_date(value: date) -> str:
+    return f"{value.strftime('%B')} {value.day}, {value.year}"
+
+
+def _format_daily_prompt(day: date, events: List[Event], tasks: List[Task]) -> str:
+    now = datetime.now()
+    day_name = day.strftime("%A")
+    formatted_date = _format_date(day)
+    current_time = _format_time(now)
+
+    sorted_events = sorted(events, key=lambda event: event.start_time)
+    event_lines = [
+        f" - {event.title} at {_format_time(event.start_time)} until {_format_time(event.end_time)} at {(event.location or 'Unknown location')}"
+        for event in sorted_events
+    ]
+
+    priority_map = {3: "I", 2: "II", 1: "III"}
+    grouped_tasks = {"I": [], "II": [], "III": []}
+    for task in tasks:
+        priority_label = priority_map.get(task.priority, "III")
+        grouped_tasks[priority_label].append(task)
+
+    for priority_label, grouped in grouped_tasks.items():
+        grouped.sort(
+            key=lambda task: (
+                task.due_date is None,
+                task.due_date or datetime.max,
+                task.title,
+            )
+        )
+
+    task_lines = {"I": [], "II": [], "III": []}
+    for priority_label, grouped in grouped_tasks.items():
+        for task in grouped:
+            if task.due_date:
+                due_date = _format_date(task.due_date.date())
+                due_time = _format_time(task.due_date)
+            else:
+                due_date = "No due date"
+                due_time = "No due time"
+            task_lines[priority_label].append(
+                f"- Tasks: {task.title}. Due at {due_date} at {due_time}"
+            )
+
+    lines = [
+        f"Today is {day_name}, {formatted_date}, {current_time}.",
+        "",
+        "Today’s events:",
+        *event_lines,
+        "",
+        "Today’s tasks:",
+        "",
+        "Priority I:",
+        *task_lines["I"],
+        "",
+        "Priority II:",
+        *task_lines["II"],
+        "",
+        "Priority III:",
+        *task_lines["III"],
+        "",
+        "Plan my day and work around my schedule. Priority I tasks must be completed today. Priority II tasks can be completed to work ahead. Priority III tasks can be ignored today unless I have excess spare time.",
+    ]
+    return "\n".join(lines)
 
 
 @app.post("/events", response_model=Event, dependencies=[Depends(require_token)])
@@ -505,32 +557,17 @@ def get_snapshot(snapshot_date: date = Query(...)) -> Snapshot:
     )
 
 
-# This endpoint exists to provide a reasoning-friendly snapshot for AI planners.
-@app.get("/ai/day", response_model=AiDaySnapshot, dependencies=[Depends(require_token)])
-def get_ai_day(day: date = Query(..., alias="date")) -> AiDaySnapshot:
+@app.get(
+    "/daily-prompt",
+    response_class=PlainTextResponse,
+    dependencies=[Depends(require_token)],
+)
+def get_daily_prompt(day: date = Query(..., alias="date")) -> str:
     range_start, range_end = _date_range_bounds(day, day)
     events = [
         event
         for event in events_store
         if _overlaps(event, range_start, range_end)
     ]
-    events.sort(key=_event_sort_key)
-    tasks_due = [
-        task
-        for task in tasks_store
-        if task.due_date is not None and task.due_date.date() == day
-    ]
     tasks_open = [task for task in tasks_store if task.status == "open"]
-    if not events and not tasks_open:
-        summary = "You have no events or open tasks on this day."
-    else:
-        summary = (
-            f"You have {len(events)} events and {len(tasks_open)} open tasks on this day."
-        )
-    return AiDaySnapshot(
-        date=day,
-        events=events,
-        tasks_due=tasks_due,
-        tasks_open=tasks_open,
-        summary=summary,
-    )
+    return _format_daily_prompt(day, events, tasks_open)
