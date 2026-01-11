@@ -1,95 +1,62 @@
 // Simple fetch wrappers for Chronos backend endpoints.
 
 const BASE_URL = import.meta.env.VITE_API_URL;
+const AUTH_TOKEN = import.meta.env.VITE_AUTH_TOKEN;
 
-// TODO: Replace with your real token once authentication is available.
-export const AUTH_TOKEN = "YOUR_TOKEN_HERE";
+const buildAuthHeader = () => {
+  if (!AUTH_TOKEN) {
+    console.warn(
+      "Chronos API token is missing. Set VITE_AUTH_TOKEN in your environment."
+    );
+  }
+  return `Bearer ${AUTH_TOKEN ?? ""}`;
+};
 
-const defaultHeaders = {
+const buildHeaders = (overrides = {}) => ({
   "Content-Type": "application/json",
-  Authorization: `Bearer ${AUTH_TOKEN}`,
-};
+  Authorization: buildAuthHeader(),
+  ...overrides,
+});
 
-export const fetchEventsForDate = async (dateString) => {
-  const response = await fetch(`${BASE_URL}/events?date=${dateString}`, {
-    headers: defaultHeaders,
+const requestJson = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...options,
+    headers: buildHeaders(options.headers),
   });
 
+  if (response.status === 401) {
+    console.error("Chronos API request unauthorized (401).");
+  }
+
   if (!response.ok) {
-    throw new Error("Failed to load events");
+    throw new Error(`Request failed with status ${response.status}`);
   }
 
   return response.json();
 };
 
-export const fetchTasks = async (headers = defaultHeaders) => {
-  const response = await fetch(`${BASE_URL}/tasks`, {
-    headers,
-  });
+export const fetchEventsForDate = (dateString) =>
+  requestJson(`${BASE_URL}/events?date=${dateString}`);
 
-  if (!response.ok) {
-    throw new Error("Failed to load tasks");
-  }
+export const fetchTasks = () => requestJson(`${BASE_URL}/tasks`);
 
-  return response.json();
-};
-
-export const createEvent = async (eventData) => {
-  const response = await fetch(`${BASE_URL}/events`, {
+export const createEvent = (eventData) =>
+  requestJson(`${BASE_URL}/events`, {
     method: "POST",
-    headers: {
-      ...defaultHeaders,
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(eventData),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to create event");
-  }
-
-  return response.json();
-};
-
-export const createTask = async (taskData) => {
-  const response = await fetch(`${BASE_URL}/tasks`, {
+export const createTask = (taskData) =>
+  requestJson(`${BASE_URL}/tasks`, {
     method: "POST",
-    headers: {
-      ...defaultHeaders,
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(taskData),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to create task");
-  }
-
-  return response.json();
-};
-
-export const completeTask = async (taskId) => {
-  const response = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+export const completeTask = (taskId) =>
+  requestJson(`${BASE_URL}/tasks/${taskId}`, {
     method: "PATCH",
-    headers: defaultHeaders,
     body: JSON.stringify({ status: "completed" }),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to complete task");
-  }
-
-  return response.json();
-};
-
-export const fetchDaySummary = async (dateString) => {
-  const response = await fetch(`${BASE_URL}/ai/day?date=${dateString}`, {
-    headers: defaultHeaders,
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load day summary");
-  }
-
-  return response.json();
-};
+export const fetchDaySummary = (dateString) =>
+  requestJson(`${BASE_URL}/ai/day?date=${dateString}`);
