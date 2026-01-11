@@ -1,12 +1,15 @@
 // Simple fetch wrappers for Chronos backend endpoints.
 
 const BASE_URL = import.meta.env.VITE_API_URL;
-const AUTH_TOKEN = import.meta.env.VITE_AUTH_TOKEN;
+const AUTH_TOKEN = import.meta.env.VITE_API_TOKEN;
+
+console.log("API:", BASE_URL);
+console.log("Token loaded:", !!AUTH_TOKEN);
 
 const buildAuthHeader = () => {
   if (!AUTH_TOKEN) {
     console.warn(
-      "Chronos API token is missing. Set VITE_AUTH_TOKEN in your environment."
+      "Chronos API token is missing. Set VITE_API_TOKEN in your environment."
     );
   }
   return `Bearer ${AUTH_TOKEN ?? ""}`;
