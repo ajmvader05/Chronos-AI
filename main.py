@@ -1,14 +1,18 @@
 import logging
 import os
+import time
 from datetime import date, datetime, time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from dotenv import load_dotenv
 
@@ -30,8 +34,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 Base = declarative_base()
 
@@ -271,9 +275,86 @@ def startup() -> None:
         logger.info("Auth disabled (dev mode)")
 
 
+@app.middleware("http")
+async def request_logger(request: Request, call_next) -> Response:
+    # Log requests for Render's stdout aggregation.
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = round((time.perf_counter() - start_time) * 1000)
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        "[REQUEST] %s %s %s %sms %s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+        client_ip,
+    )
+    return response
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(
+    request: Request, exc: HTTPException
+) -> JSONResponse:
+    detail = exc.detail
+    if isinstance(detail, dict) and "error" in detail:
+        message = str(detail["error"])
+    else:
+        message = str(detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": message, "status": exc.status_code},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"error": "Validation error", "status": 422},
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(
+    request: Request, exc: SQLAlchemyError
+) -> JSONResponse:
+    logger.exception("Database error encountered.")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Database error", "status": 500},
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    logger.exception("Unhandled server error.")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Unexpected server error", "status": 500},
+    )
+
+
 @app.get("/health")
 def health_check() -> dict:
-    return {"status": "ok"}
+    db_status = "connected"
+    try:
+        # Lightweight connectivity probe to verify the database link.
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        db_status = "disconnected"
+    return {
+        "status": "ok",
+        "service": "chronos-backend",
+        "version": "1.0.0",
+        "database": db_status,
+    }
 
 
 def _date_range_bounds(start: date, end: date) -> tuple[datetime, datetime]:
