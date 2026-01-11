@@ -9,6 +9,9 @@ from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # All datetimes are naive and represent local time; no timezone conversions are applied.
 # All-day events are interpreted as [date 00:00, next day 00:00).
@@ -24,7 +27,8 @@ app.add_middleware(
 Base = declarative_base()
 
 # SQLAlchemy is chosen for persistence to keep the ORM layer minimal and explicit.
-engine = create_engine("sqlite:///chronos.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 
 
