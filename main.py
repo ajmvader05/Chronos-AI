@@ -125,13 +125,11 @@ def _init_db() -> None:
 
 def require_token(authorization: Optional[str] = Header(None)) -> None:
     token = os.getenv("CHRONOS_API_TOKEN")
-    if not token:
+    if not token or authorization != f"Bearer {token}":
         raise HTTPException(
-            status_code=500,
-            detail="CHRONOS_API_TOKEN is not set",
+            status_code=401,
+            detail={"error": "Invalid or missing token"},
         )
-    if authorization != f"Bearer {token}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def custom_openapi() -> dict:
