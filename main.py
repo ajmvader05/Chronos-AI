@@ -72,6 +72,7 @@ class TaskRecord(Base):
     due_date = Column(DateTime(timezone=False), nullable=True)
     status = Column(String, nullable=False)
     priority = Column(Integer, nullable=True)
+    calendar = Column(String, nullable=True)
     linked_event_id = Column(String(36), nullable=True)
     notes = Column(String, nullable=True)
 
@@ -93,6 +94,7 @@ class Task(BaseModel):
     due_date: Optional[datetime] = None
     status: Literal["open", "done"]
     priority: Optional[int] = None
+    calendar: Optional[str] = None
     linked_event_id: Optional[UUID] = None
     notes: Optional[str] = None
 
@@ -122,6 +124,14 @@ class TaskCreate(BaseModel):
 
 class TaskStatusUpdate(BaseModel):
     status: Literal["completed"]
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    due_date: Optional[datetime] = None
+    priority: Optional[int] = None
+    calendar: Optional[str] = None
+    status: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -213,6 +223,7 @@ def _task_from_record(record: TaskRecord) -> Task:
         due_date=record.due_date,
         status=record.status,
         priority=record.priority,
+        calendar=record.calendar,
         linked_event_id=UUID(record.linked_event_id) if record.linked_event_id else None,
         notes=record.notes,
     )
@@ -244,6 +255,7 @@ def _persist_task(task: Task) -> None:
             due_date=task.due_date,
             status=task.status,
             priority=task.priority,
+            calendar=task.calendar,
             linked_event_id=str(task.linked_event_id) if task.linked_event_id else None,
             notes=task.notes,
         )
@@ -264,6 +276,27 @@ def _update_task_status(task: Task) -> None:
         session.commit()
 
 
+def _update_task_record(task: Task) -> None:
+    with SessionLocal() as session:
+        record = (
+            session.query(TaskRecord)
+            .filter(TaskRecord.id == str(task.id))
+            .one_or_none()
+        )
+        if record is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        record.title = task.title
+        record.due_date = task.due_date
+        record.status = task.status
+        record.priority = task.priority
+        record.calendar = task.calendar
+        record.linked_event_id = (
+            str(task.linked_event_id) if task.linked_event_id else None
+        )
+        record.notes = task.notes
+        session.commit()
+
+
 def _update_event_record(event: Event) -> None:
     with SessionLocal() as session:
         record = (
@@ -280,6 +313,19 @@ def _update_event_record(event: Event) -> None:
         record.calendar = event.calendar
         record.location = event.location
         record.notes = event.notes
+        session.commit()
+
+
+def _delete_event_record(event_id: UUID) -> None:
+    with SessionLocal() as session:
+        record = (
+            session.query(EventRecord)
+            .filter(EventRecord.id == str(event_id))
+            .one_or_none()
+        )
+        if record is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        session.delete(record)
         session.commit()
 
 
@@ -540,6 +586,24 @@ def update_event(event_id: UUID, payload: EventUpdate) -> Event:
     return updated_event
 
 
+@protected_router.delete("/events/{event_id}")
+def delete_event(event_id: UUID) -> dict:
+    existing = next((item for item in events_store if item.id == event_id), None)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        _delete_event_record(event_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to delete event.")
+        raise HTTPException(
+            status_code=500, detail="Failed to delete event"
+        ) from exc
+    events_store.remove(existing)
+    return {"success": True}
+
+
 @protected_router.post("/tasks", response_model=Task)
 def create_task(task: TaskCreate) -> Task:
     priority_map = {"low": 1, "medium": 2, "high": 3}
@@ -579,17 +643,47 @@ def get_tasks(
     "/tasks/{task_id}",
     response_model=Task,
 )
-def complete_task(task_id: UUID, update: TaskStatusUpdate) -> Task:
+def update_task(task_id: UUID, update: TaskUpdate) -> Task:
     task = next((item for item in tasks_store if item.id == task_id), None)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    if update.status == "completed":
-        task.status = "done"
+    updates = update.dict(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updates provided")
+
+    if "title" in updates:
+        title = (update.title or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="title cannot be blank")
+        task.title = title
+
+    if "due_date" in updates:
+        task.due_date = update.due_date
+
+    if "priority" in updates:
+        task.priority = update.priority
+
+    if "calendar" in updates:
+        task.calendar = update.calendar
+
+    if "status" in updates:
+        normalized = (update.status or "").strip().lower()
+        if normalized == "completed":
+            task.status = "done"
+        elif normalized in {"open", "done"}:
+            task.status = normalized
+        else:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
     try:
-        _update_task_status(task)
+        if set(updates.keys()) == {"status"}:
+            _update_task_status(task)
+        else:
+            _update_task_record(task)
     except HTTPException:
         raise
     except Exception as exc:
+        logger.exception("Failed to update task.")
         raise HTTPException(status_code=500, detail="Failed to persist task") from exc
     return task
 
