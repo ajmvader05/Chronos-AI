@@ -21,6 +21,8 @@ const buildHeaders = (overrides = {}) => ({
   ...overrides,
 });
 
+const defaultHeaders = buildHeaders();
+
 const requestJson = async (url, options = {}) => {
   const response = await fetch(url, {
     ...options,
@@ -87,6 +89,44 @@ export const completeTask = (taskId) =>
     method: "PATCH",
     body: JSON.stringify({ status: "completed" }),
   });
+
+export const updateTask = async (taskId, updates) => {
+  const res = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    method: "PATCH",
+    headers: defaultHeaders,
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error("Failed to update task");
+  return res.json();
+};
+
+export const deleteTask = async (taskId) => {
+  const res = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    method: "DELETE",
+    headers: defaultHeaders,
+  });
+  if (!res.ok) throw new Error("Failed to delete task");
+  return res.json();
+};
+
+export const updateEvent = async (eventId, updates) => {
+  const res = await fetch(`${BASE_URL}/events/${eventId}`, {
+    method: "PATCH",
+    headers: defaultHeaders,
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error("Failed to update event");
+  return res.json();
+};
+
+export const deleteEvent = async (eventId) => {
+  const res = await fetch(`${BASE_URL}/events/${eventId}`, {
+    method: "DELETE",
+    headers: defaultHeaders,
+  });
+  if (!res.ok) throw new Error("Failed to delete event");
+  return res.json();
+};
 
 export const fetchDaySummary = (dateString) =>
   requestJson(`${BASE_URL}/snapshot?snapshot_date=${dateString}`);
