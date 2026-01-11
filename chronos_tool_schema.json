@@ -3,8 +3,8 @@
     {
       "type": "function",
       "function": {
-        "name": "get_day",
-        "description": "Fetch a full summary of events and tasks for a given date from Chronos. Uses GET /ai/day with Authorization: Bearer <CHRONOS_API_TOKEN>.",
+        "name": "get_daily_prompt",
+        "description": "Fetch the daily planning prompt text for a given date from Chronos. Uses GET /daily-prompt with Authorization: Bearer <CHRONOS_API_TOKEN>.",
         "parameters": {
           "type": "object",
           "properties": {

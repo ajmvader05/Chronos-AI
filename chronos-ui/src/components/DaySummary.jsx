@@ -8,7 +8,17 @@ const getTomorrowDateString = () => {
   return tomorrow.toISOString().split("T")[0];
 };
 
-const DaySummary = ({ onEventsLoaded }) => {
+const formatEventTime = (event) => {
+  if (!event.start_time) return "";
+  return new Date(event.start_time).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const noop = () => {};
+
+const DaySummary = ({ onEventsLoaded = noop }) => {
   const [dateString] = useState(getTomorrowDateString());
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +68,8 @@ const DaySummary = ({ onEventsLoaded }) => {
         <ul className="list">
           {events.length === 0 && <li>No events scheduled.</li>}
           {events.map((event) => (
-            <li key={event.id ?? `${event.title}-${event.startTime}`}>
-              <strong>{event.startTime ?? event.time ?? ""}</strong> {event.title}
+            <li key={event.id ?? `${event.title}-${event.start_time}`}>
+              <strong>{formatEventTime(event)}</strong> {event.title}
             </li>
           ))}
         </ul>

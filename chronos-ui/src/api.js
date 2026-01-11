@@ -38,6 +38,23 @@ const requestJson = async (url, options = {}) => {
   return response.json();
 };
 
+const requestText = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...options,
+    headers: buildHeaders(options.headers),
+  });
+
+  if (response.status === 401) {
+    console.error("Chronos API request unauthorized (401).");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return response.text();
+};
+
 export const fetchEventsForDate = (dateString) =>
   requestJson(`${BASE_URL}/events?date=${dateString}`);
 
@@ -62,4 +79,7 @@ export const completeTask = (taskId) =>
   });
 
 export const fetchDaySummary = (dateString) =>
-  requestJson(`${BASE_URL}/ai/day?date=${dateString}`);
+  requestJson(`${BASE_URL}/snapshot?snapshot_date=${dateString}`);
+
+export const fetchDailyPrompt = (dateString) =>
+  requestText(`${BASE_URL}/daily-prompt?date=${dateString}`);
