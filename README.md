@@ -7,7 +7,7 @@ Create a `.env` file inside `chronos-ui/` (you can copy `.env.example`) and set:
 
 ```bash
 VITE_API_URL=https://chronos-ai.onrender.com
-VITE_AUTH_TOKEN=your-local-token
+VITE_API_TOKEN=your-local-token
 ```
 
 The backend expects the same token in `CHRONOS_API_TOKEN` when you start the API
@@ -19,6 +19,13 @@ When deploying on Render, configure environment variables for both services:
 
 - **Frontend service (Vite):**
   - `VITE_API_URL` → base URL of the backend service (e.g. `https://chronos-ai.onrender.com`)
-  - `VITE_AUTH_TOKEN` → the shared auth token
+  - `VITE_API_TOKEN` → the shared auth token
 - **Backend service:**
   - `CHRONOS_API_TOKEN` → the same shared auth token used by the frontend
+
+## Frontend env vars
+
+```bash
+VITE_API_URL=https://chronos-ai.onrender.com
+VITE_API_TOKEN=chronos-dev-token
+```
