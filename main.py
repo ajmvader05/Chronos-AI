@@ -22,9 +22,9 @@ CHRONOS_API_TOKEN = os.getenv("CHRONOS_API_TOKEN")
 # All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
 origins = [
+    "https://chronos-ai-frontend.onrender.com",
     "http://localhost:5173",
-    "http://192.168.1.31:5173",
-    "https://chronos-ui.onrender.com",
+    "http://127.0.0.1:5173",
 ]
 app.add_middleware(
     CORSMiddleware,
