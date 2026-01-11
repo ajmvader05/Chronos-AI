@@ -6,6 +6,7 @@ from datetime import date, datetime, time as dt_time, timedelta
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("chronos")
 CHRONOS_API_TOKEN = os.getenv("CHRONOS_API_TOKEN")
 
-# All datetimes are naive and represent local time; no timezone conversions are applied.
+# Persisted datetimes are naive and represent local time.
 # All-day events are interpreted as [date 00:00, next day 00:00).
 app = FastAPI()
 origins = [
@@ -123,6 +124,7 @@ class TaskStatusUpdate(BaseModel):
 
 class DailyPromptRequest(BaseModel):
     client_time: Optional[str] = Field(None, alias="clientTime")
+    timezone: Optional[str] = None
 
     class Config:
         allow_population_by_field_name = True
@@ -576,15 +578,22 @@ def get_daily_prompt(
     day: date = Query(..., alias="date"),
     payload: Optional[DailyPromptRequest] = Body(default=None),
 ) -> str:
-    if payload is None or not payload.client_time:
-        raise HTTPException(status_code=400, detail="clientTime required")
+    if payload is None or not payload.client_time or not payload.timezone:
+        raise HTTPException(
+            status_code=400, detail="clientTime and timezone required"
+        )
     try:
-        client_dt = datetime.fromisoformat(
+        utc_dt = datetime.fromisoformat(
             payload.client_time.replace("Z", "+00:00")
         )
+        local_dt = utc_dt.astimezone(ZoneInfo(payload.timezone))
     except ValueError as exc:
         raise HTTPException(
             status_code=400, detail="Invalid clientTime"
+        ) from exc
+    except ZoneInfoNotFoundError as exc:
+        raise HTTPException(
+            status_code=400, detail="Invalid timezone"
         ) from exc
     range_start, range_end = _date_range_bounds(day, day)
     events = [
@@ -593,4 +602,4 @@ def get_daily_prompt(
         if _overlaps(event, range_start, range_end)
     ]
     tasks_open = [task for task in tasks_store if task.status == "open"]
-    return _format_daily_prompt(day, events, tasks_open, client_dt)
+    return _format_daily_prompt(day, events, tasks_open, local_dt)
