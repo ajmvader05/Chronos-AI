@@ -84,5 +84,8 @@ export const fetchDaySummary = (dateString) =>
 export const fetchDailyPrompt = (dateString) =>
   requestText(`${BASE_URL}/daily-prompt?date=${dateString}`, {
     method: "POST",
-    body: JSON.stringify({ clientTime: new Date().toISOString() }),
+    body: JSON.stringify({
+      clientTime: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
   });
