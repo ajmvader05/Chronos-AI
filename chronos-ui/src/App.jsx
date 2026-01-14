@@ -6,6 +6,7 @@ import DailyPrompt from "./components/DailyPrompt.jsx";
 import FloatingAddButton from "./components/FloatingAddButton.jsx";
 import AddEventForm from "./components/AddEventForm.jsx";
 import AddTaskForm from "./components/AddTaskForm.jsx";
+import KamiAnnotationPanel from "./components/KamiAnnotationPanel.jsx";
 
 const AddModal = ({ onEventCreated, onTaskCreated }) => {
   const [activeTab, setActiveTab] = useState("event");
@@ -101,6 +102,10 @@ const App = () => {
 
         <section className="panel">
           <DailyPrompt />
+        </section>
+
+        <section className="panel">
+          <KamiAnnotationPanel />
         </section>
       </main>
 
